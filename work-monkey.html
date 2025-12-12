@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>黄小猴 IP 设计 | 雷雨婷</title>
+    <style>
+        /* --- 继承首页基础设定 --- */
+        :root {
+            --bg: #050505; 
+            --text: #e1e1e1;
+            --accent: #bfa1ff; 
+            --accent-deep: #7c3aed; 
+            --gold: #deb964; 
+            --grid: rgba(255, 255, 255, 0.03);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; cursor: none; }
+        
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+            overflow-x: hidden;
+            line-height: 1.8;
+        }
+
+        /* --- 氛围层 --- */
+        .noise-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: url('data:image/svg+xml,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)" opacity="0.05"/%3E%3C/svg%3E');
+            pointer-events: none; z-index: 998; opacity: 0.4; mix-blend-mode: overlay;
+        }
+
+        /* --- 光标 --- */
+        .cursor {
+            position: fixed; top: 0; left: 0; width: 20px; height: 20px;
+            background: white; border-radius: 50%; pointer-events: none;
+            mix-blend-mode: difference; z-index: 9999;
+            transform: translate(-50%, -50%); 
+            transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1), 
+                        height 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                        background 0.3s;
+        }
+        .cursor.hovered { width: 80px; height: 80px; } 
+
+        /* --- 导航栏 --- */
+        nav {
+            position: fixed; top: 0; width: 100%; padding: 1.5rem 3rem; 
+            display: flex; justify-content: space-between; align-items: center; z-index: 1000;
+            background: rgba(5, 5, 5, 0.7); backdrop-filter: blur(20px); border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .logo { font-weight: 800; font-size: 1.5rem; letter-spacing: -1px; text-transform: uppercase; color: white; text-decoration: none;}
+        .back-btn { font-size: 0.9rem; text-decoration: none; color: rgba(255,255,255,0.7); font-weight: 600; transition: 0.3s; display: flex; align-items: center; gap: 8px;}
+        .back-btn:hover { color: var(--accent); transform: translateX(-5px); }
+
+        /* --- 背景流体球 --- */
+        .fluid-bg {
+            position: fixed; top: 10%; right: -10%; width: 70vw; height: 70vw;
+            background: linear-gradient(45deg, var(--accent-deep), var(--accent));
+            filter: blur(100px); opacity: 0.15; z-index: -1;
+            border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+            animation: morph 15s infinite ease-in-out;
+        }
+        @keyframes morph {
+            0%, 100% { border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%; transform: translate(0,0) rotate(0deg); }
+            50% { border-radius: 60% 30% 30% 70% / 60% 40% 60% 40%; transform: translate(-20px, 20px) rotate(180deg); }
+        }
+
+        /* --- 页面主容器 --- */
+        .project-container { width: 100%; padding-top: 150px; padding-bottom: 100px; }
+
+        /* --- 头部信息区 (居中布局) --- */
+        .project-header { 
+            max-width: 1000px; 
+            margin: 0 auto 5rem; 
+            padding: 0 5vw; 
+            animation: slideUp 0.8s ease-out; 
+        }
+        
+        .project-title { font-size: 3.5rem; font-weight: 900; line-height: 1.1; margin-bottom: 0.5rem; color: white; }
+        .project-subtitle { font-family: 'Courier New', monospace; color: var(--accent); font-size: 1.1rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 3rem; display: block; }
+        
+        .project-meta {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 3rem;
+            border-top: 1px solid var(--grid); border-bottom: 1px solid var(--grid);
+            padding: 2rem 0; margin-bottom: 4rem;
+        }
+        .meta-item h4 { color: #666; font-size: 0.85rem; text-transform: uppercase; margin-bottom: 0.8rem; letter-spacing: 2px; }
+        .meta-item p { color: #fff; font-size: 1rem; font-weight: 500; line-height: 1.5; }
+        .award-highlight { color: var(--gold) !important; font-weight: 700 !important; }
+
+        .text-section { display: grid; grid-template-columns: 1fr; gap: 3rem; }
+        .text-block h3 { font-size: 1.5rem; color: white; margin-bottom: 1rem; border-left: 3px solid var(--accent); padding-left: 1rem; }
+        .text-block p { color: #bbb; font-size: 1.05rem; text-align: justify; }
+
+        /* --- 图片展示区 (全宽无缝) --- */
+        .image-gallery { width: 100%; display: flex; flex-direction: column; gap: 0; }
+        .work-img { width: 100%; height: auto; display: block; margin-bottom: 0; }
+
+        /* --- 底部导航 --- */
+        .project-nav {
+            max-width: 1000px; margin: 8rem auto 0; padding: 4rem 5vw 0; 
+            border-top: 1px solid var(--grid);
+            display: flex; justify-content: space-between;
+            align-items: center;
+        }
+        .nav-item { text-decoration: none; display: flex; flex-direction: column; transition: 0.3s; }
+        .nav-item.prev { text-align: left; align-items: flex-start; }
+        .nav-item.next { text-align: right; align-items: flex-end; }
+        .nav-label { font-family: 'Courier New', monospace; color: #666; font-size: 0.8rem; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 1px; }
+        .nav-title { font-size: 1.8rem; font-weight: 900; color: white; font-family: -apple-system, sans-serif; transition: color 0.3s; }
+        .nav-item:hover .nav-title { color: var(--accent); }
+        .nav-item:hover { transform: translateY(-5px); }
+
+        @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+
+        @media (max-width: 768px) {
+            .project-title { font-size: 2.2rem; }
+            .project-meta { grid-template-columns: 1fr; gap: 1.5rem; }
+            .project-nav { flex-direction: column; gap: 3rem; align-items: flex-start; }
+            .nav-item.next { align-items: flex-start; text-align: left; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="noise-overlay"></div>
+    <div class="fluid-bg"></div>
+    <div class="cursor" id="cursor"></div>
+
+    <nav>
+        <a href="index.html" class="back-btn hover-target">← BACK TO HOME</a>
+        <a href="index.html" class="logo hover-target">LEI.</a>
+    </nav>
+
+    <main class="project-container">
+        
+        <div class="project-header">
+            <h1 class="project-title hover-target">黄小猴 IP 设计</h1>
+            <span class="project-subtitle">Yellow Monkey - Huangshan Short-tailed Monkey IP Design</span>
+            
+            <div class="project-meta">
+                <div class="meta-item">
+                    <h4>Time</h4>
+                    <p>2023.12</p>
+                </div>
+                <div class="meta-item">
+                    <h4>Role</h4>
+                    <p>IP Character · Branding</p>
+                </div>
+                <div class="meta-item">
+                    <h4>Type</h4>
+                    <p class="award-highlight">
+                        Personal Project
+                    </p>
+                </div>
+            </div>
+
+            <div class="text-section">
+                <div class="text-block">
+                    <h3>项目背景</h3>
+                    <p>
+                        黄山是世界文化与自然双遗产地，以奇松、怪石、云海、温泉“四绝”著称，被誉为“天下第一奇山”。其独特的亚热带高山森林生态系统孕育了特有物种黄山短尾猴，该灵长类动物属国家二级保护动物，因尾短不足10厘米得名，主要栖息于海拔800-1500米山林，以群居、高智商和拟人化表情闻名，被称作“黄山精灵”。作为黄山生态文化的活态符号，短尾猴与迎客松共同构成地域标志性自然遗产。
+                    </p>
+                </div>
+                <div class="text-block">
+                    <h3>项目介绍</h3>
+                    <p>
+                        本作品是以黄山短尾猴为灵感，颜色以黄色为主。而黄山旅游景区的特色，让我为黄小猴选择了绿色的衬衫，上面印着黄山的迎客松。黄小猴憨厚的形象和害羞的神情能使大众的接受度得到提高。表情包的设计则是直接选取了小猴子生动活泼的表情，可爱有亲和力。此外目前年轻人最喜欢的祈福也给了我制作海报的灵感，将吉祥的话语与黄小猴结合，此海报可以在后续延展为手机壳、御守、小吊牌，都是不错的选择。
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="image-gallery">
+            <img src="images/黄小猴1.jpg" alt="黄小猴 IP 展示 01" class="work-img hover-target">
+            <img src="images/黄小猴2.jpg" alt="黄小猴 IP 展示 02" class="work-img hover-target">
+        </div>
+
+        <div class="project-nav">
+            <a href="work-patterns.html" class="nav-item prev hover-target">
+                <span class="nav-label">PREVIOUS PROJECT</span>
+                <span class="nav-title">← 四神纹样非遗文创</span>
+            </a>
+
+            <a href="work-yishanfang.html" class="nav-item next hover-target">
+                <span class="nav-label">NEXT PROJECT</span>
+                <span class="nav-title">易膳坊 →</span>
+            </a>
+        </div>
+
+    </main>
+
+    <script>
+        const cursor = document.getElementById('cursor');
+        
+        document.addEventListener('mousemove', (e) => {
+            cursor.style.left = e.clientX + 'px';
+            cursor.style.top = e.clientY + 'px';
+        });
+
+        document.querySelectorAll('.hover-target').forEach(t => {
+            t.addEventListener('mouseenter', () => cursor.classList.add('hovered'));
+            t.addEventListener('mouseleave', () => cursor.classList.remove('hovered'));
+        });
+    </script>
+</body>
+</html>

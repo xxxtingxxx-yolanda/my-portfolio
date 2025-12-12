@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>雷雨婷 | LEI YUTING</title>
+    <style>
+        /* --- 1. 基础设定 --- */
+        :root {
+            --bg: #050505; 
+            --text: #e1e1e1;
+            --accent: #bfa1ff; /* 浅赛博紫 */
+            --accent-deep: #7c3aed; /* 深紫 */
+            --gold: #deb964; /* 暗金色 */
+            --grid: rgba(255, 255, 255, 0.03);
+            --tag-bg: #1a1a1a; 
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; cursor: none; }
+        
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            overflow-x: hidden;
+            line-height: 1.4;
+            position: relative;
+            /* 初始禁止滚动 */
+            overflow-y: hidden;
+        }
+        
+        body.loaded { overflow-y: auto; }
+
+        /* =========================================
+           0. 新增：字符雨能量开场 (Matrix Rain Loader)
+           ========================================= */
+        .preloader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100vh;
+            background: #050505; /* 纯黑底 */
+            z-index: 99999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            overflow: hidden;
+            /* 幕布上拉动画 */
+            transition: transform 0.8s cubic-bezier(0.76, 0, 0.24, 1);
+        }
+
+        /* 字符雨画布 */
+        canvas#matrix-rain {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 1; opacity: 0.3; /* 淡淡的背景 */
+        }
+
+        /* 中间加载器容器 */
+        .loader-wrapper {
+            position: relative; z-index: 10;
+            text-align: center;
+        }
+
+        /* 数字 */
+        .counter {
+            font-size: 8vw; 
+            font-weight: 900;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            letter-spacing: -2px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px rgba(191, 161, 255, 0.8); /* 紫色微光 */
+            font-variant-numeric: tabular-nums; /* 防止数字跳动 */
+        }
+
+        /* 能量条背景 */
+        .progress-bar-bg {
+            width: 300px; height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            overflow: hidden;
+            position: relative;
+            margin: 0 auto;
+        }
+
+        /* 能量条进度 */
+        .progress-bar {
+            width: 0%; height: 100%;
+            background: var(--accent); /* 紫色进度条 */
+            box-shadow: 0 0 10px var(--accent);
+            border-radius: 2px;
+            transition: width 0.1s linear; /* 平滑过渡 */
+        }
+
+        /* 加载文字 */
+        .loader-text {
+            margin-top: 15px;
+            font-size: 0.8rem;
+            color: #888;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 4px;
+        }
+
+        /* 加载完成：幕布上移 */
+        body.loaded .preloader {
+            transform: translateY(-100%);
+        }
+
+        /* =========================================
+           1. 首页元素入场动画 (从画外滑入)
+           ========================================= */
+        /* 导航栏：从上滑入 */
+        nav {
+            position: fixed; top: 0; width: 100%; 
+            padding: 1.5rem 3rem; 
+            display: flex; justify-content: space-between; align-items: center; z-index: 1000;
+            background: rgba(5, 5, 5, 0.7); 
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            
+            /* 初始状态 */
+            transform: translateY(-100%); opacity: 0;
+            transition: all 1s ease 0.5s; /* 延迟执行 */
+        }
+        body.loaded nav { transform: translateY(0); opacity: 1; }
+
+        .logo { font-weight: 800; font-size: 1.5rem; letter-spacing: -1px; text-transform: uppercase; color: white; text-decoration: none; }
+        .nav-items { display: flex; gap: 3rem; }
+        .menu-link { 
+            font-size: 0.9rem; text-decoration: none; color: rgba(255,255,255,0.7); 
+            text-transform: uppercase; transition: 0.3s; font-weight: 600; letter-spacing: 1px;
+        }
+        .menu-link:hover { color: var(--accent); }
+
+        /* Hero 区域 */
+        header {
+            height: 100vh; 
+            display: grid; 
+            grid-template-columns: 1.2fr 1fr; 
+            align-items: center; 
+            padding: 0 5vw;
+            position: relative; 
+            border-bottom: 1px solid var(--grid);
+            overflow: hidden;
+            padding-top: 80px;
+        }
+
+        /* 左侧文字：从下滑入 */
+        .hero-left { 
+            position: relative; z-index: 2; display: flex; flex-direction: column; justify-content: center; 
+            /* 初始状态 */
+            opacity: 0; transform: translateY(100px);
+            transition: all 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.8s;
+        }
+        body.loaded .hero-left { opacity: 1; transform: translateY(0); }
+
+        /* 右侧流体球：从中心浮现 */
+        .hero-right { 
+            position: relative; height: 100%; display: flex; align-items: center; justify-content: center; 
+            /* 初始状态 */
+            opacity: 0; transform: scale(0.8);
+            transition: all 1.2s cubic-bezier(0.16, 1, 0.3, 1) 1s;
+        }
+        body.loaded .hero-right { opacity: 1; transform: scale(1); }
+
+        /* --- 以下全部为你提供的原始内容 (完全保留) --- */
+
+        /* 背景层 */
+        .noise-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: url('data:image/svg+xml,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)" opacity="0.05"/%3E%3C/svg%3E');
+            pointer-events: none; z-index: 998; opacity: 0.4; mix-blend-mode: overlay;
+        }
+
+        /* 自定义光标 */
+        .cursor {
+            position: fixed; top: 0; left: 0; width: 20px; height: 20px;
+            background: white; border-radius: 50%; pointer-events: none;
+            mix-blend-mode: difference; z-index: 9999;
+            transform: translate(-50%, -50%); transition: width 0.3s, height 0.3s;
+        }
+        .cursor.hovered { width: 80px; height: 80px; } 
+
+        /* 右侧流体球 */
+        .fluid-blob {
+            width: 450px; height: 450px;
+            background: linear-gradient(45deg, var(--accent), var(--accent-deep));
+            border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+            filter: blur(60px); opacity: 0.7;
+            animation: morph-wild 10s ease-in-out infinite;
+            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .fluid-blob:hover {
+            transform: scale(1.15); 
+            filter: blur(30px) brightness(1.3);
+            background: linear-gradient(45deg, #d8b4fe, #a855f7);
+        }
+        @keyframes morph-wild {
+            0% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; transform: translate(0, 0) rotate(0deg); }
+            33% { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; transform: translate(40px, -50px) rotate(90deg); }
+            66% { border-radius: 70% 30% 30% 70% / 60% 40% 60% 40%; transform: translate(-40px, 40px) rotate(180deg); }
+            100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; transform: translate(0, 0) rotate(360deg); }
+        }
+
+        /* 英文排版 */
+        .glitch-container { margin-bottom: 3rem; }
+        .hero-title {
+            font-size: 8.5vw; font-weight: 900; 
+            line-height: 0.9; letter-spacing: -0.04em; 
+            color: var(--text); margin: 0; opacity: 0;
+            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        .hero-title:hover { color: var(--accent); letter-spacing: 10px; }
+        
+        /* 标签 */
+        .hero-tags { display: flex; gap: 1rem; font-family: 'Courier New', monospace; opacity: 0; animation: fadeIn 1s ease-out 1.5s forwards; flex-wrap: wrap; }
+        .tag-pill {
+            position: relative; padding: 0.8rem 1.8rem; 
+            background: linear-gradient(135deg, rgba(191, 161, 255, 0.15), rgba(124, 58, 237, 0.05));
+            border: none; border-radius: 6px; 
+            color: #d8b4fe; font-size: 0.9rem; font-weight: 700; letter-spacing: 1px;
+            overflow: hidden; transition: all 0.3s ease;
+        }
+        .tag-pill:hover { 
+            background: linear-gradient(135deg, rgba(191, 161, 255, 0.4), rgba(124, 58, 237, 0.3));
+            color: #fff; transform: translateY(-2px); 
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* 装饰线 */
+        .grid-line { position: absolute; background: var(--grid); pointer-events: none; }
+        .line-v { width: 1px; height: 100%; top: 0; left: 20%; }
+        .line-v-2 { width: 1px; height: 100%; top: 0; right: 20%; }
+
+        /* --- 滚动跑马灯 --- */
+        .marquee-wrapper { padding: 4rem 0; border-bottom: 1px solid var(--grid); overflow: hidden; background: var(--bg); }
+        .marquee { white-space: nowrap; display: flex; animation: scroll 20s linear infinite; }
+        .marquee span {
+            font-size: 6rem; font-weight: 900; text-transform: uppercase; margin-right: 4rem;
+            -webkit-text-stroke: 1px rgba(255,255,255,0.3); color: transparent; transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .marquee:hover span { color: var(--accent); -webkit-text-stroke: 0; opacity: 0.9; }
+        @keyframes scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+
+        /* --- 内容区块通用 --- */
+        .container { max-width: 1400px; margin: 0 auto; padding: 8rem 5vw; display: grid; grid-template-columns: 1fr 2fr; gap: 4rem;}
+        .section-label {
+            font-family: 'Courier New', monospace; color: #666; font-size: 0.9rem; position: sticky; top: 8rem; 
+            height: fit-content;
+        }
+        .section-label::before { content: '●'; color: var(--accent); margin-right: 10px; }
+        
+        /* 列表项 (经历/荣誉) */
+        .list-item {
+            padding: 1.5rem 0; 
+            border-top: 1px solid var(--grid); display: flex; flex-direction: column;
+            transition: 0.3s; position: relative; overflow: hidden;
+        }
+        .list-item:last-child { border-bottom: 1px solid var(--grid); }
+        .list-item:hover { 
+            padding-left: 2rem; background: rgba(191, 161, 255, 0.05); 
+            border-top-color: var(--accent); border-bottom-color: var(--accent);
+        }
+        .list-item:hover .item-title { color: var(--accent); }
+        
+        .item-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.5rem; }
+        .item-title { font-size: 1.4rem; font-weight: 700; transition: 0.3s; }
+        .item-meta { font-family: 'Courier New', monospace; color: #888; font-size: 0.9rem; min-width: 120px; text-align: right; }
+        .item-detail { color: #888; font-size: 0.95rem; line-height: 1.6; max-width: 90%; transition: color 0.3s;}
+        .list-item:hover .item-detail { color: #ccc; }
+        
+        .detail-list { list-style: none; padding: 0; margin: 0; }
+        .detail-list li { margin-bottom: 0.3rem; position: relative; padding-left: 1.2rem; }
+        .detail-list li::before { content: '▹'; position: absolute; left: 0; color: var(--accent); }
+
+        /* --- 作品集列表布局 (长条式 - 左文右图) --- */
+        .works-list {
+            display: flex; flex-direction: column; gap: 2rem; 
+        }
+        
+        .work-card-long {
+            display: flex; 
+            flex-direction: row; /* 左文右图 */
+            text-decoration: none; position: relative;
+            background: #0a0a0a; 
+            border: 1px solid var(--grid);
+            border-radius: 8px; 
+            overflow: hidden;
+            transition: transform 0.4s ease, border-color 0.4s;
+            height: 220px; 
+        }
+        
+        .work-card-long:hover { 
+            transform: translateY(-3px); 
+            border-color: rgba(191, 161, 255, 0.3); 
+        }
+        
+        .work-img-container {
+            flex: 0.8; 
+            min-width: 300px; 
+            position: relative;
+            overflow: hidden;
+        }
+        
+        /* 渐变遮罩 (左侧) */
+        .work-img-container::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; bottom: 0; /* 放在左侧 */
+            width: 40%; /* 渐变区域宽度 */
+            background: linear-gradient(to right, #0a0a0a, transparent);
+            pointer-events: none; 
+            z-index: 2;
+        }
+        
+        /* 图片右对齐 */
+        .work-img { 
+            width: 100%; height: 100%; 
+            object-fit: cover; 
+            object-position: right center; /* 靠右对齐 */
+            transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        
+        .work-card-long:hover .work-img { transform: scale(1.05); }
+        
+        .work-info-container {
+            flex: 1; 
+            padding: 2rem; 
+            display: flex; flex-direction: column; justify-content: center;
+            position: relative;
+            z-index: 3; 
+        }
+        
+        .work-title { 
+            color: white; font-size: 1.6rem; 
+            font-weight: 700; margin-bottom: 0.5rem; line-height: 1.2; 
+        }
+        .work-cat { 
+            color: var(--accent); font-family: 'Courier New', monospace; 
+            font-size: 0.85rem; text-transform: uppercase; margin-bottom: 1rem; letter-spacing: 1px; 
+        }
+        
+        .work-award {
+            color: var(--gold); font-size: 0.85rem; line-height: 1.5; font-weight: 600;
+            display: flex; align-items: flex-start; gap: 8px; margin-top: auto; 
+        }
+        .work-award::before { content: '🏆'; font-size: 0.9rem; }
+
+        /* --- 技能模块 --- */
+        .skills-container { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1rem; }
+        .skill-tag {
+            background: linear-gradient(135deg, rgba(191, 161, 255, 0.1), rgba(124, 58, 237, 0.05)); border: none;
+            padding: 0.6rem 1.2rem; border-radius: 4px; font-size: 0.9rem; color: #aaa;
+            font-family: 'Courier New', monospace; transition: 0.3s;
+        }
+        .skill-tag:hover {
+            background: linear-gradient(135deg, rgba(191, 161, 255, 0.3), rgba(124, 58, 237, 0.2));
+            color: white; transform: translateY(-2px);
+        }
+        .skill-category {
+            color: var(--accent); font-size: 0.9rem; margin-bottom: 0.8rem; margin-top: 2rem; font-weight: 700; text-transform: uppercase;
+        }
+
+        /* --- 底部 --- */
+        footer {
+            height: 80vh; display: flex; align-items: center; justify-content: center; flex-direction: column; text-align: center;
+            border-top: 1px solid var(--grid);
+        }
+        .big-link {
+            font-size: 8vw; font-weight: 900; color: var(--text); text-decoration: none; line-height: 0.9; transition: 0.5s;
+            font-family: 'Arial Black', 'Impact', sans-serif;
+            display: block; /* 换行显示 */
+        }
+        .big-link:hover { color: var(--accent); letter-spacing: 5px; }
+
+        @media (max-width: 900px) {
+            header { grid-template-columns: 1fr; }
+            .hero-right { display: none; } 
+            .container { grid-template-columns: 1fr; }
+            .hero-title { font-size: 15vw; }
+            .cursor { display: none; } * { cursor: auto; }
+            
+            .work-card-long { flex-direction: column; height: auto; }
+            .work-img-container { height: 200px; flex: none; }
+            .work-img-container::after { display: none; } 
+            .work-info-container { padding: 1.5rem; border-bottom: 1px solid var(--grid); }
+            
+            .nav-items { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="preloader">
+        <canvas id="matrix-rain"></canvas>
+        <div class="loader-wrapper">
+            <div class="counter">0%</div>
+            <div class="progress-bar-bg">
+                <div class="progress-bar"></div>
+            </div>
+            <div class="loader-text">SYSTEM INITIALIZING</div>
+        </div>
+    </div>
+
+    <div class="noise-overlay"></div>
+    <div class="cursor" id="cursor"></div>
+
+    <nav>
+        <a href="#" class="logo hover-target">Lei.</a>
+        <div class="nav-items">
+            <a href="#works" class="menu-link hover-target">Works</a>
+            <a href="#experience" class="menu-link hover-target">Experience</a>
+            <a href="#honors" class="menu-link hover-target">Honors</a>
+            <a href="#skills" class="menu-link hover-target">Skills</a>
+        </div>
+    </nav>
+
+    <div class="grid-line line-v"></div>
+    <div class="grid-line line-v-2"></div>
+
+    <header>
+        <div class="hero-left">
+            <div class="glitch-container">
+                <h1 class="hero-title hover-target" data-value="HELLO">HELLO</h1>
+                <h1 class="hero-title hover-target" data-value="I'M">I'M</h1>
+                <h1 class="hero-title hover-target" data-value="LEI">LEI</h1>
+                <h1 class="hero-title hover-target" data-value="YUTING">YUTING</h1>
+            </div>
+            <div class="hero-tags">
+                <div class="tag-pill hover-target">UI/UX DESIGN</div>
+                <div class="tag-pill hover-target">FIGMA EXPERT</div>
+                <div class="tag-pill hover-target">AIGC CREATOR</div>
+            </div>
+        </div>
+        <div class="hero-right">
+            <div class="fluid-blob hover-target"></div>
+        </div>
+    </header>
+
+    <div class="marquee-wrapper">
+        <div class="marquee hover-target">
+            <span>Interaction</span>
+            <span>Experience</span>
+            <span>Research</span>
+            <span>Design</span>
+            <span>Interaction</span>
+            <span>Experience</span>
+            <span>Research</span>
+            <span>Design</span>
+        </div>
+    </div>
+
+    <section class="container" id="works">
+        <div class="section-label">01 // SELECTED WORKS</div>
+        <div class="works-list">
+            
+            <a href="work-yihuan.html" class="work-card-long hover-target">
+                <div class="work-info-container">
+                    <div class="work-title">易换回收 APP</div>
+                    <span class="work-cat">UI/UX Design · Interaction</span>
+                    <div class="work-award">蓝桥杯国赛二等奖 / 省赛一等奖</div>
+                </div>
+                <div class="work-img-container">
+                    <img src="images/易换1.jpg" alt="易换回收APP" class="work-img">
+                </div>
+            </a>
+
+            <a href="work-yongling.html" class="work-card-long hover-target">
+                <div class="work-info-container">
+                    <div class="work-title">永陵天团文创</div>
+                    <span class="work-cat">Packaging · Branding</span>
+                    <div class="work-award">中国包装创意设计大赛国家三等奖</div>
+                </div>
+                <div class="work-img-container">
+                    <img src="images/永陵天团1.jpg" alt="永陵天团" class="work-img">
+                </div>
+            </a>
+
+            <a href="work-wuhou.html" class="work-card-long hover-target">
+                <div class="work-info-container">
+                    <div class="work-title">武侯的试炼 H5</div>
+                    <span class="work-cat">H5 Advertising · Canva</span>
+                    <div class="work-award">
+                        大广赛国家三等奖<br>湖南省赛三等奖
+                    </div>
+                </div>
+                <div class="work-img-container">
+                    <img src="images/武侯的试炼1.jpg" alt="武侯的试炼" class="work-img">
+                </div>
+            </a>
+
+             <a href="work-zhoushang.html" class="work-card-long hover-target">
+                <div class="work-info-container">
+                    <div class="work-title">洲上人家·芦菇酱菜</div>
+                    <span class="work-cat">Packaging · Agricultural</span>
+                    <div class="work-award">
+                        中南星奖一等奖<br>湖南之星一等奖
+                    </div>
+                </div>
+                <div class="work-img-container">
+                    <img src="images/州上人家1.jpg" alt="洲上人家" class="work-img">
+                </div>
+            </a>
+
+             <a href="work-patterns.html" class="work-card-long hover-target">
+                <div class="work-info-container">
+                    <div class="work-title">四神纹样非遗文创</div>
+                    <span class="work-cat">Cultural · Pattern Design</span>
+                    <div class="work-award">2024 上古神兽非遗设计大赛优秀奖</div>
+                </div>
+                <div class="work-img-container">
+                    <img src="images/四神纹样1.jpg" alt="四神纹样" class="work-img">
+                </div>
+            </a>
+
+             <a href="work-monkey.html" class="work-card-long hover-target">
+                <div class="work-info-container">
+                    <div class="work-title">黄小猴 IP 设计</div>
+                    <span class="work-cat">IP Character · Branding</span>
+                </div>
+                <div class="work-img-container">
+                    <img src="images/黄小猴1.jpg" alt="黄小猴" class="work-img">
+                </div>
+            </a>
+
+             <a href="work-yishanfang.html" class="work-card-long hover-target">
+                <div class="work-info-container">
+                    <div class="work-title">易膳坊</div>
+                    <span class="work-cat">Brand Design</span>
+                </div>
+                <div class="work-img-container">
+                    <img src="images/易膳坊1.jpg" alt="易膳坊" class="work-img">
+                </div>
+            </a>
+
+        </div>
+    </section>
+
+    <section class="container" id="experience">
+        <div class="section-label">02 // RESEARCH EXPERIENCE</div>
+        <div class="list-container">
+            
+            <div class="list-item hover-target">
+                <div class="item-header">
+                    <div class="item-title">国家社科基金项目 · 研究助理</div>
+                    <div class="item-meta">2024.01 — 2024.02</div>
+                </div>
+                <div class="item-detail">
+                    <ul class="detail-list">
+                        <li>参与龙湘平教授主持的课题《五溪流域苗族服饰文化嬗变及其当代创新转化研究》。</li>
+                        <li>以图文结合形式整理十五款苗族服饰资料，完成五套服装纹样绘制（含上衣正反面及裙子纹样）。</li>
+                        <li>完成三十五张拍摄图片再处理，保留苗族头饰服装，去除杂乱背景。</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="list-item hover-target">
+                <div class="item-header">
+                    <div class="item-title">凤凰县苗族银饰田野调查 · 小组成员</div>
+                    <div class="item-meta">2023.10 — 2023.11</div>
+                </div>
+                <div class="item-detail">
+                    <ul class="detail-list">
+                        <li>深入德榜禾库银匠村开展田野调查，与第五代银饰锻制技艺传承人龙吉堂及其孙女深度访谈。</li>
+                        <li>撰写银饰锻制技艺田野调查报告，记录银饰锻制工序与传承现状。</li>
+                    </ul>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <section class="container" id="honors">
+        <div class="section-label">03 // HONORS & AWARDS</div>
+        <div class="list-container">
+            
+            <div class="list-item hover-target">
+                <div class="item-header"><div class="item-title">第十六届全国大学生广告艺术大赛</div><div class="item-meta">国家三等奖</div></div>
+            </div>
+            <div class="list-item hover-target">
+                <div class="item-header"><div class="item-title">第十五届蓝桥杯大赛</div><div class="item-meta">国家二等奖</div></div>
+            </div>
+            <div class="list-item hover-target">
+                <div class="item-header"><div class="item-title">中国包装创意设计大赛</div><div class="item-meta">国家三等奖</div></div>
+            </div>
+            <div class="list-item hover-target">
+                <div class="item-header"><div class="item-title">第十九届中南星奖设计艺术大赛</div><div class="item-meta">省级一等奖</div></div>
+            </div>
+            <div class="list-item hover-target">
+                <div class="item-header"><div class="item-title">湖南之星艺术设计大赛</div><div class="item-meta">省级一等奖</div></div>
+            </div>
+
+            <div class="list-item hover-target">
+                <div class="item-header"><div class="item-title">2023-2024 年度国家奖学金</div><div class="item-meta">Top 1%</div></div>
+            </div>
+            <div class="list-item hover-target">
+                <div class="item-header"><div class="item-title">2021-2022 年度国家励志奖学金</div><div class="item-meta">2022</div></div>
+            </div>
+            <div class="list-item hover-target">
+                <div class="item-header"><div class="item-title">2024-2025 年度湖南省优秀毕业生</div><div class="item-meta">2025</div></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="container" id="skills">
+        <div class="section-label">04 // SKILLS</div>
+        <div class="list-container">
+            <div class="skills-container">
+                <div class="skill-tag hover-target">English CET-4</div>
+                <div class="skill-tag hover-target">Figma</div>
+                <div class="skill-tag hover-target">Adobe Photoshop</div>
+                <div class="skill-tag hover-target">Adobe Illustrator</div>
+                <div class="skill-tag hover-target">Adobe After Effects</div>
+                <div class="skill-tag hover-target">Adobe Premiere Pro</div>
+                <div class="skill-tag hover-target">Adobe XD</div>
+                <div class="skill-tag hover-target">Nomad Sculpt</div>
+                <div class="skill-tag hover-target">Blender</div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <a href="mailto:leiyuting09@163.com" class="big-link hover-target">
+            LEIYUTING09<br>@163.COM
+        </a>
+    </footer>
+
+    <script>
+        // --- 核心：智能计算时间的开场动画 ---
+        document.addEventListener("DOMContentLoaded", () => {
+            const canvas = document.getElementById('matrix-rain');
+            const ctx = canvas.getContext('2d');
+            const counter = document.querySelector('.counter');
+            const bar = document.querySelector('.progress-bar');
+            const preloader = document.querySelector('.preloader');
+            
+            // 1. 设置画布 (强制全屏，防止白边)
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            
+            const characters = '01ABCDEFGHIJKLMNOPQRSTUVWXYZ@#$%&*+-=<>?';
+            const fontSize = 14;
+            const columns = canvas.width / fontSize;
+            const drops = Array(Math.floor(columns)).fill(1);
+            
+            // 2. 绘制代码雨
+            function drawMatrix() {
+                // 拖尾效果
+                ctx.fillStyle = 'rgba(5, 5, 5, 0.1)'; 
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // 字体颜色
+                ctx.fillStyle = '#bfa1ff'; 
+                ctx.font = fontSize + 'px monospace';
+                
+                for(let i = 0; i < drops.length; i++) {
+                    const text = characters.charAt(Math.floor(Math.random() * characters.length));
+                    ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+                    
+                    // 随机让雨滴回到顶部
+                    if(drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                        drops[i] = 0;
+                    }
+                    drops[i]++;
+                }
+            }
+            
+            // 雨滴下落速度 (30ms 一帧)
+            const matrixInterval = setInterval(drawMatrix, 30); 
+            
+            // --- 核心修复：智能计算动画时长 ---
+            // 屏幕越高，需要的下落时间越长。
+            // 速度约为 14px / 30ms = 466px/秒
+            // 1400px 的屏幕大约需要 3秒才能填满。
+            // 我们设置最小动画时间为 4秒，确保雨滴能从头下到底。
+            
+            const screenHeight = window.innerHeight;
+            const estimatedFallTime = (screenHeight / 14) * 30; // 理论填满时间
+            const safeDuration = Math.max(estimatedFallTime + 1000, 4000); // 至少4秒
+            
+            // 计算每1%需要多少毫秒
+            const stepTime = safeDuration / 100;
+            
+            let count = 0;
+            const loadingInterval = setInterval(() => {
+                count++;
+                
+                counter.innerText = count + '%';
+                bar.style.width = count + '%';
+                
+                if (count >= 100) {
+                    clearInterval(loadingInterval);
+                    
+                    // 4. 进度条满后，再停顿 0.5秒，确保视觉饱满
+                    setTimeout(() => {
+                        clearInterval(matrixInterval); // 停止下雨
+                        document.body.classList.add('loaded'); // 幕布上拉
+                        
+                        // 触发文字解密
+                        document.querySelectorAll(".hero-title").forEach((t, i) => { 
+                            setTimeout(() => { scrambleText(t); }, i * 200); 
+                        });
+                        
+                        setTimeout(() => { preloader.classList.add('hidden'); }, 800);
+                    }, 500); 
+                }
+            }, stepTime); // 使用计算出的时间间隔
+        });
+
+        const cursor = document.getElementById('cursor');
+        document.addEventListener('mousemove', (e) => {
+            cursor.style.left = e.clientX + 'px';
+            cursor.style.top = e.clientY + 'px';
+        });
+
+        document.querySelectorAll('.hover-target').forEach(t => {
+            t.addEventListener('mouseenter', () => cursor.classList.add('hovered'));
+            t.addEventListener('mouseleave', () => cursor.classList.remove('hovered'));
+        });
+
+        const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"; 
+        const scrambleText = (target) => {
+            const originalText = target.dataset.value; let iterations = 0; target.style.opacity = 1;
+            const interval = setInterval(() => {
+                target.innerText = originalText.split("").map((l, i) => { if(i < iterations) return originalText[i]; return chars[Math.floor(Math.random() * chars.length)]; }).join("");
+                if(iterations >= originalText.length) clearInterval(interval); iterations += 1 / 2; 
+            }, 30); 
+        }
+    </script>
+</body>
+</html>

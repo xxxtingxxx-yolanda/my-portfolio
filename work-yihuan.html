@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>易换回收 APP | 雷雨婷</title>
+    <style>
+        /* --- 继承首页基础设定 --- */
+        :root {
+            --bg: #050505; 
+            --text: #e1e1e1;
+            --accent: #bfa1ff; /* 浅赛博紫 */
+            --accent-deep: #7c3aed; 
+            --gold: #deb964; 
+            --grid: rgba(255, 255, 255, 0.03);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; cursor: none; }
+        
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+            overflow-x: hidden;
+            line-height: 1.8;
+        }
+
+        /* --- 氛围层 --- */
+        .noise-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: url('data:image/svg+xml,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)" opacity="0.05"/%3E%3C/svg%3E');
+            pointer-events: none; z-index: 998; opacity: 0.4; mix-blend-mode: overlay;
+        }
+
+        /* --- 光标 (保持与首页一致) --- */
+        .cursor {
+            position: fixed; top: 0; left: 0; width: 20px; height: 20px;
+            background: white; border-radius: 50%; pointer-events: none;
+            mix-blend-mode: difference; z-index: 9999;
+            transform: translate(-50%, -50%); 
+            transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1), 
+                        height 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                        background 0.3s;
+        }
+        /* 悬停变大 */
+        .cursor.hovered { width: 80px; height: 80px; } 
+
+        /* --- 导航栏 --- */
+        nav {
+            position: fixed; top: 0; width: 100%; padding: 1.5rem 3rem; 
+            display: flex; justify-content: space-between; align-items: center; z-index: 1000;
+            background: rgba(5, 5, 5, 0.7); backdrop-filter: blur(20px); border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .logo { font-weight: 800; font-size: 1.5rem; letter-spacing: -1px; text-transform: uppercase; color: white; text-decoration: none;}
+        .back-btn { font-size: 0.9rem; text-decoration: none; color: rgba(255,255,255,0.7); font-weight: 600; transition: 0.3s; display: flex; align-items: center; gap: 8px;}
+        .back-btn:hover { color: var(--accent); transform: translateX(-5px); }
+
+        /* --- 背景流体球 --- */
+        .fluid-bg {
+            position: fixed; top: 10%; right: -10%; width: 70vw; height: 70vw;
+            background: linear-gradient(45deg, var(--accent-deep), var(--accent));
+            filter: blur(100px); opacity: 0.15; z-index: -1;
+            border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+            animation: morph 15s infinite ease-in-out;
+        }
+        @keyframes morph {
+            0%, 100% { border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%; transform: translate(0,0) rotate(0deg); }
+            50% { border-radius: 60% 30% 30% 70% / 60% 40% 60% 40%; transform: translate(-20px, 20px) rotate(180deg); }
+        }
+
+        /* --- 页面主容器 --- */
+        .project-container { width: 100%; padding-top: 150px; padding-bottom: 100px; }
+
+        /* --- 头部信息区 (保持中间宽度) --- */
+        .project-header { 
+            max-width: 1000px; 
+            margin: 0 auto 5rem; 
+            padding: 0 5vw; 
+            animation: slideUp 0.8s ease-out; 
+        }
+        
+        .project-title { font-size: 3.5rem; font-weight: 900; line-height: 1.1; margin-bottom: 0.5rem; color: white; }
+        .project-subtitle { font-family: 'Courier New', monospace; color: var(--accent); font-size: 1.1rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 3rem; display: block; }
+        
+        .project-meta {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 3rem;
+            border-top: 1px solid var(--grid); border-bottom: 1px solid var(--grid);
+            padding: 2rem 0; margin-bottom: 4rem;
+        }
+        .meta-item h4 { color: #666; font-size: 0.85rem; text-transform: uppercase; margin-bottom: 0.8rem; letter-spacing: 2px; }
+        .meta-item p { color: #fff; font-size: 1rem; font-weight: 500; line-height: 1.5; }
+        .award-highlight { color: var(--gold) !important; font-weight: 700 !important; }
+
+        .text-section { display: grid; grid-template-columns: 1fr; gap: 3rem; }
+        .text-block h3 { font-size: 1.5rem; color: white; margin-bottom: 1rem; border-left: 3px solid var(--accent); padding-left: 1rem; }
+        .text-block p { color: #bbb; font-size: 1.05rem; text-align: justify; }
+
+        /* --- 图片展示区 (核心修改：直接全宽，无动画) --- */
+        .image-gallery { 
+            width: 100%; 
+            display: flex; flex-direction: column; 
+            gap: 0; /* 图片无缝连接 */
+        }
+        
+        /* 这里的 img 直接撑满容器，没有 wrapper 限制宽度了 */
+        .work-img {
+            width: 100%; 
+            height: auto; 
+            display: block;
+            margin-bottom: 0;
+            /* 保持原样，不再忽大忽小 */
+        }
+
+        /* --- 底部导航 --- */
+        .next-project { max-width: 1000px; margin: 8rem auto 0; padding: 4rem 5vw 0; border-top: 1px solid var(--grid); text-align: right; }
+        .next-label { color: #666; font-size: 0.9rem; margin-bottom: 0.5rem; display: block; }
+        .next-link { font-size: 3rem; font-weight: 900; color: white; text-decoration: none; font-family: -apple-system, sans-serif; transition: 0.3s; }
+        .next-link:hover { color: var(--accent); letter-spacing: 2px; }
+
+        @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+
+        @media (max-width: 768px) {
+            .project-title { font-size: 2.2rem; }
+            .project-meta { grid-template-columns: 1fr; gap: 1.5rem; }
+            .next-link { font-size: 2rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="noise-overlay"></div>
+    <div class="fluid-bg"></div>
+    
+    <div class="cursor" id="cursor"></div>
+
+    <nav>
+        <a href="index.html" class="back-btn hover-target">← BACK TO HOME</a>
+        <a href="index.html" class="logo hover-target">LEI.</a>
+    </nav>
+
+    <main class="project-container">
+        
+        <div class="project-header">
+            <h1 class="project-title hover-target">易换回收 APP</h1>
+            <span class="project-subtitle">Easy Recycling App Interface Interaction Design</span>
+            
+            <div class="project-meta">
+                <div class="meta-item">
+                    <h4>Time</h4>
+                    <p>2024.03 - 2024.04</p>
+                </div>
+                <div class="meta-item">
+                    <h4>Role</h4>
+                    <p>UI/UX Design<br>Interaction</p>
+                </div>
+                <div class="meta-item">
+                    <h4>Honors</h4>
+                    <p class="award-highlight">
+                        🏆 第十五届蓝桥杯国赛二等奖<br>
+                        🏆 第十五届蓝桥杯省赛一等奖
+                    </p>
+                </div>
+            </div>
+
+            <div class="text-section">
+                <div class="text-block">
+                    <h3>项目背景</h3>
+                    <p>
+                        200多年来，随着工业化进程的深入，大量温室气体（主要是二氧化碳）的排出，导致全球气温升高、气候发生变化，这已是不争的事实。社会的发展将人类推进到了从工业文明时代向生态文明时代转折的时期。大力倡导低碳经济，建设生态文明，成为这一时期的主旋律。与之相应，在生活层面，倡导和践行低碳生活，已成为每个公民在建设生态文明时代义不容辞的环保责任。
+                    </p>
+                </div>
+                <div class="text-block">
+                    <h3>项目介绍</h3>
+                    <p>
+                        易换 APP 是一个二手回收平台，从用户痛点出发，以趣味年轻的设计风格来进行场景打造。通过积累回收能量获得回收图章和详细的回收流程解惑来进行用户的心智培养，力求创造一个方便、高效、有趣的回收平台。
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="image-gallery">
+            <img src="images/易换1.jpg" alt="易换作品展示 01" class="work-img hover-target">
+            <img src="images/易换2.jpg" alt="易换作品展示 02" class="work-img hover-target">
+            <img src="images/易换3.jpg" alt="易换作品展示 03" class="work-img hover-target">
+        </div>
+
+        <div class="next-project">
+            <span class="next-label">NEXT PROJECT</span>
+            <a href="work-yongling.html" class="next-link hover-target">永陵天团 →</a>
+        </div>
+
+    </main>
+
+    <script>
+        const cursor = document.getElementById('cursor');
+        
+        // 1. 光标跟随
+        document.addEventListener('mousemove', (e) => {
+            cursor.style.left = e.clientX + 'px';
+            cursor.style.top = e.clientY + 'px';
+        });
+
+        // 2. 悬停变大 (所有 hover-target 包括图片)
+        document.querySelectorAll('.hover-target').forEach(t => {
+            t.addEventListener('mouseenter', () => cursor.classList.add('hovered'));
+            t.addEventListener('mouseleave', () => cursor.classList.remove('hovered'));
+        });
+        
+        // 删除了所有的滚动监听 (Scroll Listener)，现在图片就是安静地放在那里
+    </script>
+</body>
+</html>
